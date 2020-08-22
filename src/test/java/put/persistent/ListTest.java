@@ -50,7 +50,6 @@ public class ListTest {
 
         assertEquals(1, first);
 
-
     }
 
 

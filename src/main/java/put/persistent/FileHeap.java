@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -16,13 +17,13 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 /**
- *
  * |METADATA                     | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
  * |Object directory             heapAddress - pokazuje na poczatek           | heapPointer - pokazuje na 1 wolne miejsce na stercie
  */
-
+@Slf4j
 public class FileHeap implements Heap {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final long TOTAL_BYTE_BUFFER_SIZE = 10L * 1024 * 1024; // Heap size: 128 MB
@@ -49,13 +50,17 @@ public class FileHeap implements Heap {
     public void putObject(String name, Object object) {
         Transaction.run(this, () -> {
             try {
+                log.info("Putting object with name: {} and value: {} ", name, object);
+                if (objectDirectory.containsKey(name)) {
+                    log.info("Object already in object directory... Performing update");
+                    freeObject(name);
+                }
                 // write object first
                 byte[] bytes = mapper.writeValueAsBytes(object);
                 byteBuffer.position(heapPointer);
                 byteBuffer.put(bytes);
                 objectDirectory.put(name, new ObjectData(heapPointer, bytes.length));
                 heapPointer = byteBuffer.position();
-
                 updateObjectDirectory();
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
