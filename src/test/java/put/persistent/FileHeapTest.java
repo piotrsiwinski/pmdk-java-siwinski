@@ -142,7 +142,6 @@ class FileHeapTest {
 
         // all employees should be stored at heap except 1st one
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
-        ;
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
         var expectedEmp4 = heap.getObject("emp4", Employee.class);
@@ -171,7 +170,6 @@ class FileHeapTest {
 
         // get employees
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
-        ;
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
         var expectedEmp4 = heap.getObject("emp4", Employee.class);
@@ -217,6 +215,27 @@ class FileHeapTest {
 
     @Test
     @Order(6)
+    public void shouldDeleteAllObjects2() {
+        final var heap = new FileHeap(Paths.get(pathToHeap));
+
+        // free rest of employees (1st and 4rd already deleted)
+        heap.freeObject("emp1");
+        heap.freeObject("emp2");
+        heap.freeObject("emp3");
+
+        // get employees
+        var expectedEmp1 = heap.getObject("emp1", Employee.class);
+        var expectedEmp2 = heap.getObject("emp2", Employee.class);
+        var expectedEmp3 = heap.getObject("emp3", Employee.class);
+
+        // all should be null
+        assertNull(expectedEmp1);
+        assertNull(expectedEmp2);
+        assertNull(expectedEmp3);
+    }
+
+    @Test
+    @Order(7)
     public void shouldReturnNullForNonExistingObject() {
         final var heap = new FileHeap(Paths.get(pathToHeap));
         var object = heap.getObject("non-existing-object", Object.class);
@@ -230,7 +249,7 @@ class FileHeapTest {
     @NoArgsConstructor
     @AllArgsConstructor
     @EqualsAndHashCode
-    static class Employee {
+    private static class Employee {
         private long id;
         private String name;
         private String surname;
