@@ -2,6 +2,7 @@ package put.persistent;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Order;
@@ -72,7 +73,7 @@ public class ListTest {
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     public void shouldGetAllElements() {
         var heap = new FileHeap(Paths.get(pathToHeap));
         var lst = new PersistentList(listName, heap);
@@ -106,7 +107,7 @@ public class ListTest {
             } else {
                 // list was already created
                 listMetadata = metadata;
-                if(metadata.head != null) { // but can be empty, so null is possible
+                if (metadata.head != null) { // but can be empty, so null is possible
                     head = listMetadata.head;
                 }
             }
@@ -140,7 +141,8 @@ public class ListTest {
             }
             Node tmp = head; // trzeba doczytac kolejne elementy z pamieci
             for (int i = 0; i < index; i++) {
-                if(tmp.next == null){
+                tmp = heap.getObject(tmp.id.toString(), Node.class);
+                if (tmp.next == null) {
                     throw new RuntimeException("Cannot get element...");
                 }
                 tmp = tmp.next;
