@@ -104,7 +104,7 @@ public class FileHeap implements Heap {
             Transaction.run(this, () -> {
                 byte[] bytes = new byte[objectData.objectSize];
                 byteBuffer.position(objectData.objectAddress);
-                byteBuffer.put(bytes);
+                byteBuffer.put(bytes); // put zeroes to buffer (leaves empty space)
                 byteBuffer.force();
                 objectDirectory.remove(name);
                 updateObjectDirectory();
