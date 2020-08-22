@@ -55,17 +55,23 @@ public class FileHeap implements Heap {
                     log.info("Object already in object directory... Performing update");
                     freeObject(name);
                 }
-                // write object first
                 byte[] bytes = mapper.writeValueAsBytes(object);
-                byteBuffer.position(heapPointer);
-                byteBuffer.put(bytes);
                 objectDirectory.put(name, new ObjectData(heapPointer, bytes.length));
-                heapPointer = byteBuffer.position();
+                heapPointer = allocate(bytes);
                 updateObjectDirectory();
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
             }
         });
+        return heapPointer;
+    }
+
+    // musimy jeszcze zapisywac heap pointer
+    public int allocate(byte[] bytes){
+        byteBuffer.position(heapPointer);
+        byteBuffer.put(bytes);
+        heapPointer = byteBuffer.position();
+        byteBuffer.force();
         return heapPointer;
     }
 

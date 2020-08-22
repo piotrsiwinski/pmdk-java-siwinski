@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
 @TestMethodOrder(OrderAnnotation.class)
-class FileHeapTest {
+class EmployeeHeapTest {
 
     final static String pathToHeap = "employeeHeap.pool";
 
