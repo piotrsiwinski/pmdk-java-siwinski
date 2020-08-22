@@ -108,7 +108,6 @@ public class FileHeap implements Heap {
                 objectDirectory.remove(name);
                 updateObjectDirectory();
             });
-
         }
     }
 
