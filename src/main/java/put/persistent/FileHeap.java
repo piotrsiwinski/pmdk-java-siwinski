@@ -17,9 +17,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ *
+ * |METADATA                     | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ * |Object directory             heapAddress - pokazuje na poczatek           | heapPointer - pokazuje na 1 wolne miejsce na stercie
+ */
+
 public class FileHeap implements Heap {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final long TOTAL_BYTE_BUFFER_SIZE = 128L * 1024 * 1024; // Heap size: 128 MB
+    private static final long TOTAL_BYTE_BUFFER_SIZE = 10L * 1024 * 1024; // Heap size: 128 MB
     private static final int metadataAddress = 0;
     private static final int metadataSize = 1 * 1024 * 1024; // 1 MB
     private static final int heapAddress = metadataSize;
@@ -121,11 +127,14 @@ public class FileHeap implements Heap {
             if (!byteBuffer.isLoaded()) {
                 byteBuffer.load();
             }
-            if (!create) {
+            if (create) {
+                putObject("heapPointer", heapPointer);
+            } else {
                 byte[] arr = new byte[metadataSize];
                 byteBuffer.get(arr);
                 objectDirectory = mapper.readValue(arr, new TypeReference<HashMap<String, ObjectData>>() {
                 });
+                heapPointer = getObject("heapPointer", Integer.class);
             }
             isOpened = true;
         } catch (IOException e) {
