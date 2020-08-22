@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 /**
  * |METADATA                     | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -26,10 +25,11 @@ import java.util.logging.Logger;
 @Slf4j
 public class FileHeap implements Heap {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final long TOTAL_BYTE_BUFFER_SIZE = 10L * 1024 * 1024; // Heap size: 128 MB
+    private static final long TOTAL_BYTE_BUFFER_SIZE = 10L * 1024 * 1024; // Heap size: 10 MB
     private static final int metadataAddress = 0;
     private static final int metadataSize = 1 * 1024 * 1024; // 1 MB
     private static final int heapAddress = metadataSize;
+    private static final String heapPointerName = "heapPointer";
     private final Path path;
 
     private int heapPointer = heapAddress;
@@ -56,9 +56,7 @@ public class FileHeap implements Heap {
                     freeObject(name);
                 }
                 byte[] bytes = mapper.writeValueAsBytes(object);
-                objectDirectory.put(name, new ObjectData(heapPointer, bytes.length));
-                heapPointer = allocate(bytes);
-                updateObjectDirectory();
+                heapPointer = allocate(name, bytes);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
             }
@@ -66,26 +64,35 @@ public class FileHeap implements Heap {
         return heapPointer;
     }
 
-    // musimy jeszcze zapisywac heap pointer
+    // zapis heap pointer - na razie serializacja całego objectDirectory
+    // pewnie dałoby się zrobić stałe offsety i tylko bytebufferem zapisywać - do sprawdzenia
     public int allocate(byte[] bytes){
         byteBuffer.position(heapPointer);
         byteBuffer.put(bytes);
         heapPointer = byteBuffer.position();
-        byteBuffer.force();
+        updateObjectDirectory(); // tylko tu serializacja
         return heapPointer;
     }
 
+    public int allocate(String name, byte[] bytes){
+        putToObjectDirectory(name, bytes.length);
+        return allocate(bytes);
+    }
+
+    private void putToObjectDirectory(String name, int size){
+        objectDirectory.put(name, new ObjectData(heapPointer, size));
+    }
+
+    // poprawić na wersję bez serializacji, tylko stałe offsety
     private void updateObjectDirectory() {
         try {
-            objectDirectory.put("heapPointer", new ObjectData(heapPointer, Integer.BYTES));
+            putToObjectDirectory(heapPointerName, Integer.SIZE);
             byte[] objectDir = mapper.writeValueAsBytes(objectDirectory);
             if (objectDir.length > metadataSize) {
                 throw new RuntimeException("Metadata is too big!");
             }
-            byte[] bytes = new byte[metadataSize];
-            System.arraycopy(objectDir, 0, bytes, 0, objectDir.length);
             byteBuffer.position(metadataAddress);
-            byteBuffer.put(bytes);
+            byteBuffer.put(objectDir);
             byteBuffer.force();
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -159,7 +166,7 @@ public class FileHeap implements Heap {
 
     @Override
     public void close() {
-        updateObjectDirectory();
+        Transaction.run(this::updateObjectDirectory);
     }
 
     static class ObjectData {
