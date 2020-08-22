@@ -64,7 +64,7 @@ public class FileHeap implements Heap {
         return heapPointer;
     }
 
-    // zapis heap pointer - na razie serializacja całego objectDirectory
+    // todo: zapis heap pointer - na razie serializacja całego objectDirectory
     // pewnie dałoby się zrobić stałe offsety i tylko bytebufferem zapisywać - do sprawdzenia
     public int allocate(byte[] bytes) {
         byteBuffer.position(heapPointer);
@@ -83,7 +83,7 @@ public class FileHeap implements Heap {
         objectDirectory.put(name, new ObjectData(heapPointer, size));
     }
 
-    // poprawić na wersję bez serializacji, tylko stałe offsety
+    // todo: poprawić na wersję bez serializacji, tylko stałe offsety
     private void updateObjectDirectory() {
         try {
             putToObjectDirectory(heapPointerName, Integer.SIZE);
@@ -101,6 +101,7 @@ public class FileHeap implements Heap {
 
     @Override
     public <T> T getObject(String name, Class<T> aClass) {
+        // todo: zapisywać jako stałe bloki, np char buffer[255], int size -> bezpośrednio w bytebuffer, bez serializacji
         return Optional.ofNullable(objectDirectory.get(name))
                 .map(objectData -> {
                     byte[] bytes = new byte[objectData.objectSize];
