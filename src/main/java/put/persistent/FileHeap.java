@@ -66,7 +66,7 @@ public class FileHeap implements Heap {
 
     // zapis heap pointer - na razie serializacja całego objectDirectory
     // pewnie dałoby się zrobić stałe offsety i tylko bytebufferem zapisywać - do sprawdzenia
-    public int allocate(byte[] bytes){
+    public int allocate(byte[] bytes) {
         byteBuffer.position(heapPointer);
         byteBuffer.put(bytes);
         heapPointer = byteBuffer.position();
@@ -74,12 +74,12 @@ public class FileHeap implements Heap {
         return heapPointer;
     }
 
-    public int allocate(String name, byte[] bytes){
+    public int allocate(String name, byte[] bytes) {
         putToObjectDirectory(name, bytes.length);
         return allocate(bytes);
     }
 
-    private void putToObjectDirectory(String name, int size){
+    private void putToObjectDirectory(String name, int size) {
         objectDirectory.put(name, new ObjectData(heapPointer, size));
     }
 
