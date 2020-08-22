@@ -33,21 +33,20 @@ class FileHeapTest {
     @Test
     @Order(1)
     public void shouldAddEmployee() {
-
         var emp1 = new Employee(1, "John", "Doe", "john.doe@mail.com");
         var emp2 = new Employee(2, "John", "Doe", "john.doe@mail.com");
         var emp3 = new Employee(3, "John", "Doe", "john.doe@mail.com");
-
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
         heap.putObject("emp1", emp1);
         heap.putObject("emp2", emp2);
         heap.putObject("emp3", emp3);
-        heap.close();
 
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
+
+        heap.close();
 
         assertEquals(emp1, expectedEmp1);
         assertEquals(emp2, expectedEmp2);
@@ -72,7 +71,7 @@ class FileHeapTest {
         heap.putObject("emp4", emp4);
         heap.putObject("emp5", emp5);
         heap.putObject("emp6", emp6);
-        heap.close();
+
 
         // all employees should be stored at heap
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
@@ -81,7 +80,7 @@ class FileHeapTest {
         var expectedEmp4 = heap.getObject("emp4", Employee.class);
         var expectedEmp5 = heap.getObject("emp5", Employee.class);
         var expectedEmp6 = heap.getObject("emp6", Employee.class);
-
+        heap.close();
 
         assertEquals(emp1, expectedEmp1);
         assertEquals(emp2, expectedEmp2);
@@ -103,19 +102,17 @@ class FileHeapTest {
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
 
-
         // free first employee
         heap.freeObject("emp1");
 
         // all employees should be stored at heap except 1st one
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
-        ;
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
         var expectedEmp4 = heap.getObject("emp4", Employee.class);
         var expectedEmp5 = heap.getObject("emp5", Employee.class);
         var expectedEmp6 = heap.getObject("emp6", Employee.class);
-
+        heap.close();
 
         assertNull(expectedEmp1);
         assertEquals(emp2, expectedEmp2);
@@ -148,6 +145,7 @@ class FileHeapTest {
         var expectedEmp5 = heap.getObject("emp5", Employee.class);
         var expectedEmp6 = heap.getObject("emp6", Employee.class);
 
+        heap.close();
 
         assertNull(expectedEmp1);
         assertEquals(emp2, expectedEmp2);
@@ -176,6 +174,7 @@ class FileHeapTest {
         var expectedEmp5 = heap.getObject("emp5", Employee.class);
         var expectedEmp6 = heap.getObject("emp6", Employee.class);
 
+        heap.close();
 
         // all should be null
         assertNull(expectedEmp1);
@@ -190,23 +189,20 @@ class FileHeapTest {
     @Test
     @Order(5)
     public void shouldAddEmployeeToCleanedHeap() {
-
         // after previous test heap should be empty, let's try to add new objects to cleaned heap
-
         var emp1 = new Employee(1, "John", "Doe", "john.doe@mail.com");
         var emp2 = new Employee(2, "John", "Doe", "john.doe@mail.com");
         var emp3 = new Employee(3, "John", "Doe", "john.doe@mail.com");
-
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
         heap.putObject("emp1", emp1);
         heap.putObject("emp2", emp2);
         heap.putObject("emp3", emp3);
-        heap.close();
 
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
+        heap.close();
 
         assertEquals(emp1, expectedEmp1);
         assertEquals(emp2, expectedEmp2);
@@ -227,6 +223,7 @@ class FileHeapTest {
         var expectedEmp1 = heap.getObject("emp1", Employee.class);
         var expectedEmp2 = heap.getObject("emp2", Employee.class);
         var expectedEmp3 = heap.getObject("emp3", Employee.class);
+        heap.close();
 
         // all should be null
         assertNull(expectedEmp1);
@@ -239,6 +236,7 @@ class FileHeapTest {
     public void shouldReturnNullForNonExistingObject() {
         final var heap = new FileHeap(Paths.get(pathToHeap));
         var object = heap.getObject("non-existing-object", Object.class);
+        heap.close();
 
         assertNull(object);
     }

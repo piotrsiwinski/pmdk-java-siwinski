@@ -105,6 +105,7 @@ public class FileHeap implements Heap {
                 byte[] bytes = new byte[objectData.objectSize];
                 byteBuffer.position(objectData.objectAddress);
                 byteBuffer.put(bytes);
+                byteBuffer.force();
                 objectDirectory.remove(name);
                 updateObjectDirectory();
             });
@@ -146,14 +147,14 @@ public class FileHeap implements Heap {
 
     @Override
     public void close() {
-
+        updateObjectDirectory();
     }
 
     static class ObjectData {
         private int objectAddress;
         private int objectSize;
 
-        private ObjectData() {
+        private ObjectData() { // required for Jackson
         }
 
         private ObjectData(int objectAddress, int objectSize) {
@@ -161,24 +162,5 @@ public class FileHeap implements Heap {
             this.objectSize = objectSize;
         }
 
-    }
-
-    static class HeapPointer {
-        private int address;
-
-        private HeapPointer() {
-        }
-        
-        private HeapPointer(int address) {
-            this.address = address;
-        }
-
-        public int getAddress() {
-            return address;
-        }
-
-        public void setAddress(int address) {
-            this.address = address;
-        }
     }
 }
