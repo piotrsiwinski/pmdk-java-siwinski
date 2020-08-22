@@ -19,7 +19,7 @@ public class SimpleListTest2 {
     public void cleanup() {
         File f = new File(pathToHeap);
         if (f.exists()) {
-           // f.delete();
+            f.delete();
         }
     }
 
