@@ -53,8 +53,9 @@ public class FileHeap implements Heap {
                 byte[] bytes = mapper.writeValueAsBytes(object);
                 byteBuffer.position(heapPointer);
                 byteBuffer.put(bytes);
-                this.objectDirectory.put(name, new ObjectData(heapPointer, bytes.length));
+                objectDirectory.put(name, new ObjectData(heapPointer, bytes.length));
                 heapPointer = byteBuffer.position();
+
                 updateObjectDirectory();
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
@@ -64,6 +65,7 @@ public class FileHeap implements Heap {
 
     private void updateObjectDirectory() {
         try {
+            objectDirectory.put("heapPointer", new ObjectData(heapPointer, Integer.BYTES));
             byte[] objectDir = mapper.writeValueAsBytes(objectDirectory);
             if (objectDir.length > metadataSize) {
                 throw new RuntimeException("Metadata is too big!");
@@ -128,13 +130,13 @@ public class FileHeap implements Heap {
                 byteBuffer.load();
             }
             if (create) {
-                putObject("heapPointer", heapPointer);
+                updateObjectDirectory();
             } else {
                 byte[] arr = new byte[metadataSize];
                 byteBuffer.get(arr);
                 objectDirectory = mapper.readValue(arr, new TypeReference<HashMap<String, ObjectData>>() {
                 });
-                heapPointer = getObject("heapPointer", Integer.class);
+                heapPointer = objectDirectory.get("heapPointer").objectAddress;
             }
             isOpened = true;
         } catch (IOException e) {
@@ -160,5 +162,24 @@ public class FileHeap implements Heap {
             this.objectSize = objectSize;
         }
 
+    }
+
+    static class HeapPointer {
+        private int address;
+
+        private HeapPointer() {
+        }
+        
+        private HeapPointer(int address) {
+            this.address = address;
+        }
+
+        public int getAddress() {
+            return address;
+        }
+
+        public void setAddress(int address) {
+            this.address = address;
+        }
     }
 }
