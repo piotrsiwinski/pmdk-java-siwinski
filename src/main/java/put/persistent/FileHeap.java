@@ -47,7 +47,7 @@ public class FileHeap implements Heap {
     }
 
     @Override
-    public void putObject(String name, Object object) {
+    public int putObject(String name, Object object) {
         Transaction.run(this, () -> {
             try {
                 log.info("Putting object with name: {} and value: {} ", name, object);
@@ -66,6 +66,7 @@ public class FileHeap implements Heap {
                 throw new RuntimeException("Cannot put object into heap");
             }
         });
+        return heapPointer;
     }
 
     private void updateObjectDirectory() {

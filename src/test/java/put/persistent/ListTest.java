@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -90,7 +91,6 @@ public class ListTest {
 
 
     private static class PersistentList {
-        private static int nodeId = 1;
         private final Heap heap;
         private final ListMetadata listMetadata;
         private Node head;
@@ -115,8 +115,8 @@ public class ListTest {
         public void add(int element) {
             Transaction.run(() -> {
                 if (head == null) {
-                    head = new Node("node-" + nodeId++, element);
-                    heap.putObject(head.id, head);
+                    head = new Node(UUID.randomUUID(), element);
+                    heap.putObject(head.id.toString(), head);
                     listMetadata.head = head;
                     heap.putObject(listMetadata.name, listMetadata);
                 } else {
@@ -124,10 +124,10 @@ public class ListTest {
                     while (help.next != null) {
                         help = help.next;
                     }
-                    Node newNode = new Node("node-" + nodeId++, element);
+                    Node newNode = new Node(UUID.randomUUID(), element);
                     help.next = newNode;
-                    heap.putObject(newNode.id, newNode);
-                    heap.putObject(help.id, help);
+                    heap.putObject(newNode.id.toString(), newNode);
+                    heap.putObject(help.id.toString(), help);
                 }
             });
 
@@ -140,10 +140,11 @@ public class ListTest {
             }
             Node tmp = head; // trzeba doczytac kolejne elementy z pamieci
             for (int i = 0; i < index; i++) {
-                tmp = tmp.next;
-                if(tmp == null){
+                if(tmp.next == null){
                     throw new RuntimeException("Cannot get element...");
                 }
+                tmp = tmp.next;
+
             }
             return tmp.element;
         }
@@ -152,11 +153,11 @@ public class ListTest {
         @NoArgsConstructor
         @AllArgsConstructor
         static class Node {
-            private String id;
+            private UUID id;
             private int element;
             private Node next;
 
-            public Node(String id, int element) {
+            public Node(UUID id, int element) {
                 this.element = element;
                 this.id = id;
             }

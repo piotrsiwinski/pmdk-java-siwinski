@@ -26,7 +26,7 @@ public interface Heap {
 
     void close();
 
-    void putObject(String name, Object object);
+    int putObject(String name, Object object);
 
     <T> T getObject(String name, Class<T> aClass);
 
