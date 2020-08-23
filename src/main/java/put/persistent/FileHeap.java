@@ -167,7 +167,7 @@ public class FileHeap implements Heap {
 
     @Override
     public void close() {
-        Transaction.run(this::updateObjectDirectory);
+        Transaction.run(this, this::updateObjectDirectory);
     }
 
     static class ObjectData {

@@ -20,7 +20,7 @@ public class SimplePersistentList {
     }
 
     public void add(int element) {
-        Transaction.run(() -> {
+        Transaction.run(heap, () -> {
             if (head == null) {
                 head = new Node(element);
                 heap.putObject(listName, head);

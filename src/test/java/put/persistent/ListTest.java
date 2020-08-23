@@ -120,7 +120,7 @@ public class ListTest {
         }
 
         public void add(int element) {
-            Transaction.run(() -> {
+            Transaction.run(heap, () -> {
                 if (head == null) {
                     head = new Node(UUID.randomUUID(), element);
                     heap.putObject(head.id.toString(), head);
