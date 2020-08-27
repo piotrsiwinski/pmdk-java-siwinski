@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -95,6 +94,10 @@ public class FileHeap implements Heap {
         return allocate(bytes);
     }
 
+    public int allocate(String name, byte aByte) {
+        return allocate(name, new byte[]{aByte}); // todo: fix
+    }
+
     private void putToObjectDirectory(String name, int size, ObjectData objectData) {
         objectDirectory.put(name, objectData);
     }
@@ -133,6 +136,17 @@ public class FileHeap implements Heap {
                         e.printStackTrace();
                         return null;
                     }
+                })
+                .orElse(null);
+    }
+
+    public byte[] getObject(String name) {
+        return Optional.ofNullable(objectDirectory.get(name))
+                .map(objectData -> {
+                    byte[] bytes = new byte[objectData.objectSize];
+                    byteBuffer.position(objectData.objectAddress);
+                    byteBuffer.get(bytes);
+                    return bytes;
                 })
                 .orElse(null);
     }

@@ -6,14 +6,14 @@ import org.bson.types.ObjectId;
 import java.nio.ByteBuffer;
 
 @Getter
-public class TransactionInfo {
+public class TransactionInfo implements PersistentObject<TransactionInfo> {
 
     // OBJECT_ID - 12 B
     // HEAP_POINTER - 8
     // STATE - 8
     private static final int SIZE = Integer.SIZE * 2 + new ObjectId().toByteArray().length;
-    private ObjectId txId;
-    private int heapPointer; // adres, który transakcja chce modfikować
+    private final ObjectId txId;
+    private final int heapPointer; // adres, który transakcja chce modfikować
     private TransactionState state = TransactionState.None;
 
     public TransactionInfo(ObjectId txId, int heapPointer, TransactionState state) {
