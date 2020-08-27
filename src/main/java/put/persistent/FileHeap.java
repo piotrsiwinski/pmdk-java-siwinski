@@ -60,8 +60,8 @@ public class FileHeap implements Heap {
         Transaction.run(this, () -> {
             try {
                 transactionLock.lock();
-//                var txId = new TransInfo(UUID.randomUUID(), heapPointer);
-//                allocate(txId.transactionId, )
+                var tx = new TransactionInfo(new ObjectId(), heapPointer, TransactionInfo.TransactionState.None);
+                allocate(tx.getTxId().toString(), tx.toBytes());
 
 
                 log.info("Putting object with name: {} and value: {} ", name, object);
