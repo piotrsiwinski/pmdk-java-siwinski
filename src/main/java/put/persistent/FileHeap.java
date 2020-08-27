@@ -51,7 +51,14 @@ public class FileHeap implements Heap {
     }
 
     static class TransactionLog {
+        // http://www.mathcs.emory.edu/~cheung/Courses/554/Syllabus/6-logging/undo-redo2.html
 
+        // redo log
+        // We do not need to undo the updates made by the uncommitted transactions
+        //And the recovery procedure for redo logging was simplified to:
+        //
+        // 1. Find all the committed transactions
+        // 2. Redo all updates made by the committed transactions
     }
 
     @Override
@@ -59,6 +66,7 @@ public class FileHeap implements Heap {
         Transaction.run(this, () -> {
             try {
                 transactionLock.lock();
+                // to mozna przekazac do Transaction.run() - nawet tylko heap pointer
                 var tx = new TransactionInfo(new ObjectId(), heapPointer, TransactionInfo.TransactionState.None);
                 allocate(tx.getTxId().toString(), tx.toBytes());
 
@@ -208,8 +216,8 @@ public class FileHeap implements Heap {
         private int objectAddress;
         private int objectSize;
 
-        private ObjectData() { // required for Jackson
-        }
+        private ObjectData() {
+        }// required for Jackson
 
         private ObjectData(int objectAddress, int objectSize) {
             this.objectAddress = objectAddress;
