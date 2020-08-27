@@ -100,7 +100,7 @@ public class FileHeap implements Heap {
     }
 
     private void putToObjectDirectory(String name, int size) {
-        objectDirectory.put(name, new ObjectData(UUID.randomUUID(), heapPointer, size));
+        objectDirectory.put(name, new ObjectData(heapPointer, size));
     }
 
     // todo: poprawić na wersję bez serializacji, tylko stałe offsety
@@ -191,15 +191,13 @@ public class FileHeap implements Heap {
     }
 
     static class ObjectData {
-        private UUID transactionId;
         private int objectAddress;
         private int objectSize;
 
         private ObjectData() { // required for Jackson
         }
 
-        private ObjectData(UUID transactionId, int objectAddress, int objectSize) {
-            this.transactionId = transactionId;
+        private ObjectData(int objectAddress, int objectSize) {
             this.objectAddress = objectAddress;
             this.objectSize = objectSize;
         }
