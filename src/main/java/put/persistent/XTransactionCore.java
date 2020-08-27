@@ -1,6 +1,16 @@
 package put.persistent;
 
+import java.util.UUID;
+
 public class XTransactionCore implements TransactionCore {
+    private UUID transactionId;
+    private final FileHeap fileHeap;
+
+    public XTransactionCore(Heap heap) {
+        this.fileHeap = (FileHeap) heap; // todo: fix - don't cast
+        FileHeap.transactionLock.lock();
+
+    }
 
 
     // operacje na UNDO LOG

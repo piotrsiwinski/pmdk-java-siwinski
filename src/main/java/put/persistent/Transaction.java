@@ -19,7 +19,7 @@ public class Transaction {
     }
 
     public static void run(Heap heap, Runnable body) {
-        var transaction = new Transaction(new XTransactionCore());
+        var transaction = new Transaction(new XTransactionCore(heap));
 
         boolean success = false;
         int attempts = 1;

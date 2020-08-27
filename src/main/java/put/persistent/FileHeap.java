@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -17,6 +18,9 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * |METADATA                     | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -31,6 +35,7 @@ public class FileHeap implements Heap {
     private static final int heapAddress = metadataSize;
     private static final String heapPointerName = "heapPointer";
     private final Path path;
+    final static Lock transactionLock = new ReentrantLock();
 
     private int heapPointer = heapAddress;
     private MappedByteBuffer byteBuffer;
@@ -46,10 +51,19 @@ public class FileHeap implements Heap {
         this.open();
     }
 
+    static class TransactionLog {
+
+    }
+
     @Override
     public int putObject(String name, Object object) {
         Transaction.run(this, () -> {
             try {
+                transactionLock.lock();
+//                var txId = new TransInfo(UUID.randomUUID(), heapPointer);
+//                allocate(txId.transactionId, )
+
+
                 log.info("Putting object with name: {} and value: {} ", name, object);
                 if (objectDirectory.containsKey(name)) {
                     log.info("Object already in object directory... Performing update");
@@ -59,6 +73,8 @@ public class FileHeap implements Heap {
                 heapPointer = allocate(name, bytes);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
+            } finally {
+                transactionLock.unlock();
             }
         });
         return heapPointer;
@@ -79,8 +95,12 @@ public class FileHeap implements Heap {
         return allocate(bytes);
     }
 
+    private void putToObjectDirectory(String name, int size, ObjectData objectData) {
+        objectDirectory.put(name, objectData);
+    }
+
     private void putToObjectDirectory(String name, int size) {
-        objectDirectory.put(name, new ObjectData(heapPointer, size));
+        objectDirectory.put(name, new ObjectData(UUID.randomUUID(), heapPointer, size));
     }
 
     // todo: poprawić na wersję bez serializacji, tylko stałe offsety
@@ -171,13 +191,15 @@ public class FileHeap implements Heap {
     }
 
     static class ObjectData {
+        private UUID transactionId;
         private int objectAddress;
         private int objectSize;
 
         private ObjectData() { // required for Jackson
         }
 
-        private ObjectData(int objectAddress, int objectSize) {
+        private ObjectData(UUID transactionId, int objectAddress, int objectSize) {
+            this.transactionId = transactionId;
             this.objectAddress = objectAddress;
             this.objectSize = objectSize;
         }
