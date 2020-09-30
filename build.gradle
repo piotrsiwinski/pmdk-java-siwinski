@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.3'
+    implementation 'org.mongodb:bson:4.1.0'
+    implementation 'com.google.guava:guava:28.2-jre'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.5.2'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.assertj:assertj-core:3.15.0'
+    testImplementation 'org.slf4j:slf4j-simple:1.7.30'
+    compile group: 'org.projectlombok', name: 'lombok', version: '1.18.12'
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+    testAnnotationProcessor "org.projectlombok:lombok:1.18.8"
+
+}
+
+group = 'pl.put.poznan'
+version = '1.0-SNAPSHOT'
+sourceCompatibility = '13'
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+test {
+    useJUnitPlatform()
+}
