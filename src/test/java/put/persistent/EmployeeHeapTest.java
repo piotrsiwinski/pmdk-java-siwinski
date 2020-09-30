@@ -1,10 +1,5 @@
 package put.persistent;
 
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -38,6 +33,7 @@ class EmployeeHeapTest {
         var emp3 = new Employee(3, "John", "Doe", "john.doe@mail.com");
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
+
         heap.putObject("emp1", emp1);
         heap.putObject("emp2", emp2);
         heap.putObject("emp3", emp3);
@@ -242,17 +238,6 @@ class EmployeeHeapTest {
     }
 
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    private static class Employee {
-        private long id;
-        private String name;
-        private String surname;
-        private String email;
-    }
 
 
 }

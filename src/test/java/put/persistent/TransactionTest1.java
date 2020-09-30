@@ -17,7 +17,7 @@ public class TransactionTest1 {
     public void cleanup() {
         File f = new File(pathToHeap);
         if (f.exists()) {
-            // f.delete();
+             f.delete();
         }
     }
 
@@ -39,6 +39,7 @@ public class TransactionTest1 {
 
     @Test
     public void shouldAddToEmptyList() {
+
         var heap = new FileHeap(Paths.get(pathToHeap));
         Employee emp1 = new Employee(1, "John", "Doe", "john.doe@mail.com");
         heap.putObject("emp1", emp1);

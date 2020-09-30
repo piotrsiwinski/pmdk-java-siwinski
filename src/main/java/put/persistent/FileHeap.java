@@ -17,6 +17,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,8 +38,9 @@ public class FileHeap implements Heap {
     final static Lock transactionLock = new ReentrantLock();
 
     private int heapPointer = heapAddress;
-    private MappedByteBuffer byteBuffer;
+    MappedByteBuffer byteBuffer;
     private Map<String, ObjectData> objectDirectory;
+    private final Map<Integer, Bucket> memoryBuckets = new HashMap<>();
     private boolean isOpened = false;
 
 
@@ -47,7 +49,16 @@ public class FileHeap implements Heap {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         this.objectDirectory = new HashMap<>();
+        this.initBuckets();
         this.open();
+
+    }
+
+    private void initBuckets() {
+        for (int i = 1; i < 100; i++) {
+            int bucketSize = i * Long.BYTES;
+            memoryBuckets.put(bucketSize, new Bucket(bucketSize));
+        }
     }
 
     static class TransactionLog {
@@ -63,13 +74,12 @@ public class FileHeap implements Heap {
 
     @Override
     public int putObject(String name, Object object) {
-        Transaction.run(this, () -> {
+//        Transaction.run(this, () -> {
             try {
                 transactionLock.lock();
                 // to mozna przekazac do Transaction.run() - nawet tylko heap pointer
                 var tx = new TransactionInfo(new ObjectId(), heapPointer, TransactionInfo.TransactionState.None);
-                allocate(tx.getTxId().toString(), tx.toBytes());
-
+                // allocate(tx.getTxId().toString(), tx.toBytes());
 
                 log.info("Putting object with name: {} and value: {} ", name, object);
                 if (objectDirectory.containsKey(name)) {
@@ -77,37 +87,40 @@ public class FileHeap implements Heap {
                     freeObject(name);
                 }
                 byte[] bytes = mapper.writeValueAsBytes(object);
-                heapPointer = allocate(name, bytes);
+                allocate(name, bytes);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
             } finally {
                 transactionLock.unlock();
             }
-        });
+//        });
         return heapPointer;
     }
 
     // todo: zapis heap pointer - na razie serializacja całego objectDirectory
     // pewnie dałoby się zrobić stałe offsety i tylko bytebufferem zapisywać - do sprawdzenia
-    public int allocate(byte[] bytes) {
-        byteBuffer.position(heapPointer);
-        byteBuffer.put(bytes);
-        heapPointer = byteBuffer.position();
-        updateObjectDirectory(); // tylko tu serializacja
-        return heapPointer;
-    }
 
     public int allocate(String name, byte[] bytes) {
-        putToObjectDirectory(name, bytes.length);
-        return allocate(bytes);
+        int blockSize = align(bytes.length);
+        putToObjectDirectory(name, blockSize);
+        var memoryBlock = firstFit(blockSize)
+                .orElse(new MemoryBlock(blockSize, true, heapPointer));
+
+        var bucket = Objects.requireNonNull(memoryBuckets.get(blockSize));
+        bucket.addMemoryBlock(memoryBlock);
+
+        byteBuffer.position(memoryBlock.getAddress());
+        byteBuffer.put(bytes);
+        heapPointer += blockSize;
+        memoryBlock.setData(bytes);
+        updateObjectDirectory(); // tylko tu serializacja
+        return memoryBlock.getAddress();
     }
 
-    public int allocate(String name, byte aByte) {
-        return allocate(name, new byte[]{aByte}); // todo: fix
-    }
-
-    private void putToObjectDirectory(String name, int size, ObjectData objectData) {
-        objectDirectory.put(name, objectData);
+    public Optional<MemoryBlock> firstFit(int size) {
+        Bucket bucket = memoryBuckets.get(size);
+        if (bucket == null) return Optional.empty();
+        return bucket.getFirstFree();
     }
 
     private void putToObjectDirectory(String name, int size) {
@@ -163,14 +176,16 @@ public class FileHeap implements Heap {
     public void freeObject(String name) {
         if (objectDirectory.containsKey(name)) {
             ObjectData objectData = objectDirectory.get(name);
-            Transaction.run(this, () -> {
-                byte[] bytes = new byte[objectData.objectSize];
-                byteBuffer.position(objectData.objectAddress);
-                byteBuffer.put(bytes); // put zeroes to buffer (leaves empty space)
-                byteBuffer.force();
-                objectDirectory.remove(name);
-                updateObjectDirectory();
-            });
+//            Transaction.run(this, () -> {
+            Bucket bucket = memoryBuckets.get(objectData.objectSize);
+            bucket.removeByAddress(objectData.objectAddress);
+            byte[] bytes = new byte[objectData.objectSize];
+            byteBuffer.position(objectData.objectAddress);
+            byteBuffer.put(bytes); // put zeroes to buffer (leaves empty space)
+            byteBuffer.force();
+            objectDirectory.remove(name);
+            updateObjectDirectory();
+//            });
         }
     }
 
@@ -198,6 +213,11 @@ public class FileHeap implements Heap {
                 byteBuffer.get(arr);
                 objectDirectory = mapper.readValue(arr, new TypeReference<HashMap<String, ObjectData>>() {
                 });
+                objectDirectory.forEach((name, objectData) -> memoryBuckets
+                        .get(objectData.objectSize)
+                        .addMemoryBlock(
+                                MemoryBlock.fromAddress(this, objectData.objectAddress, objectData.objectSize)
+                        ));
                 heapPointer = objectDirectory.get("heapPointer").objectAddress;
             }
             isOpened = true;
@@ -209,7 +229,8 @@ public class FileHeap implements Heap {
 
     @Override
     public void close() {
-        Transaction.run(this, this::updateObjectDirectory);
+//        Transaction.run(this, this::updateObjectDirectory);
+        this.updateObjectDirectory();
     }
 
     static class ObjectData {
@@ -224,5 +245,9 @@ public class FileHeap implements Heap {
             this.objectSize = objectSize;
         }
 
+    }
+
+    int align(int n) {
+        return (n + Long.BYTES - 1) & -Long.BYTES;
     }
 }
