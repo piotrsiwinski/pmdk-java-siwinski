@@ -66,21 +66,30 @@ public class AllocatorTests {
 
     @Test
     public void shouldAllocateLongString2() {
-        var object = "THIS IS VERY LONG STRING";
+        // Zapisujemy dwa długie napisy
+        // zwalniamy pierwszy
+        // sprawdzamy, czy alokator zaalokuje wolne miejsce na poczatku sterty
+        var longText = "THIS IS VERY LONG STRING";
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
 
-        int address = heap.allocate("text", object.getBytes());
-        int secondAddress = heap.allocate("text2", object.getBytes());
+        int address = heap.allocate("text", longText.getBytes());
+        int longTextAddress = heap.allocate("longText", longText.getBytes());
 
         heap.freeObject("text");
 
-        int newAddress = heap.allocate("A", "A".getBytes());
+        int aAddress = heap.allocate("A", "A".getBytes());
         int bAddress = heap.allocate("B", "B".getBytes());
         int cAddress = heap.allocate("C", "C".getBytes());
 
-        assertEquals(address, newAddress);
-        assertTrue(bAddress < secondAddress);
-        assertTrue(cAddress < secondAddress);
+        assertEquals(address, aAddress);
+        assertTrue(bAddress < longTextAddress);
+        assertTrue(cAddress < longTextAddress);
+
+        assertEquals(longText, heap.getObject("longText", String.class));
+        assertEquals("A", heap.getObject("A", String.class));
+        assertEquals("B", heap.getObject("B", String.class));
+        assertEquals("C", heap.getObject("C", String.class));
+
     }
 }

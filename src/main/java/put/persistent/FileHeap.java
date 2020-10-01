@@ -80,14 +80,13 @@ public class FileHeap implements Heap {
                     freeObject(name);
                 }
                 byte[] bytes = mapper.writeValueAsBytes(object);
-                allocate(name, bytes);
+                return allocate(name, bytes);
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Cannot put object into heap");
             } finally {
                 transactionLock.unlock();
             }
 //        });
-        return heapPointer;
     }
 
     // todo: zapis heap pointer - na razie serializacja całego objectDirectory
@@ -112,18 +111,15 @@ public class FileHeap implements Heap {
         var data = new TreeSet<>(objectDirectory.values());
         if (!reuse.get() && data.size() > 1) {
             Iterator<ObjectData> iterator = data.iterator();
+            var data1 = iterator.next();
             while (iterator.hasNext()) {
-                var data1 = iterator.next();
-                ObjectData data2 = null;
-                if (iterator.hasNext()) {
-                    data2 = iterator.next();
-                }
-                if (data1 == null || data2 == null) break;
-                if (data1.objectAddress + data1.objectSize + blockSize < data2.objectAddress) {
+                var data2 = iterator.next();
+                if (data1.objectAddress + data1.objectSize + blockSize <= data2.objectAddress) {
                     System.out.println("FOUND FREE SPACE");
                     heapPointer = data1.objectAddress + data1.objectSize;
                     reuse.set(true);
                 }
+                data1 = data2;
             }
         }
 
@@ -170,7 +166,7 @@ public class FileHeap implements Heap {
                         return mapper.readValue(bytes, aClass);
                     } catch (IOException e) {
                         e.printStackTrace();
-                        return null;
+                        throw new RuntimeException("Cannot read value: IOException");
                     }
                 })
                 .orElse(null);
