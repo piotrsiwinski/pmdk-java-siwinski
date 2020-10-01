@@ -1,6 +1,7 @@
 package put.persistent;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -12,16 +13,25 @@ public class AllocatorTests {
 
     final static String pathToHeap = "allocHeap.pool";
 
-    @AfterAll
-    public static void cleanup() {
+    @BeforeEach
+    public void cleanup() {
         File f = new File(pathToHeap);
         if (f.exists()) {
             f.delete();
         }
     }
 
+    @AfterEach
+    public void cleanupAfter() {
+        File f = new File(pathToHeap);
+        if (f.exists()) {
+            f.delete();
+        }
+    }
+
+
     @Test
-    public void shouldAddEmployee() {
+    public void shouldAllocateLongString() {
         var object = "THIS IS VERY LONG STRING";
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
@@ -36,5 +46,21 @@ public class AllocatorTests {
         assertEquals(address, newAddress);
     }
 
-    // todo: napisać test dla obiektu wiekszego od bucketa
+    @Test
+    public void shouldAllocateForSecondTime() {
+        var str = "Lorem ipsum dolor sit amet";
+
+        var heap = new FileHeap(Paths.get(pathToHeap));
+
+        int address = heap.allocate("str", str.getBytes());
+        int secondAddr = heap.allocate("str2", str.getBytes());
+        heap.freeObject("str");
+
+        heap = new FileHeap(Paths.get(pathToHeap));
+        int expectedAddress = heap.allocate("str", str.getBytes());
+        System.out.println("address: " + address);
+        System.out.println("second address: " + secondAddr);
+
+        assertEquals(address, expectedAddress);
+    }
 }

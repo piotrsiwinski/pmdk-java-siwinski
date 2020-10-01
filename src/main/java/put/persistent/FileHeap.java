@@ -16,9 +16,11 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -40,7 +42,7 @@ public class FileHeap implements Heap {
     private int heapPointer = heapAddress;
     MappedByteBuffer byteBuffer;
     private Map<String, ObjectData> objectDirectory;
-    private final Map<Integer, Bucket> memoryBuckets = new HashMap<>();
+    private List<Integer> usedAddresses = new LinkedList<>();
     private boolean isOpened = false;
 
 
@@ -49,16 +51,7 @@ public class FileHeap implements Heap {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         this.objectDirectory = new HashMap<>();
-        this.initBuckets();
         this.open();
-
-    }
-
-    private void initBuckets() {
-        for (int i = 1; i < 100; i++) {
-            int bucketSize = i * Long.BYTES;
-            memoryBuckets.put(bucketSize, new Bucket(bucketSize));
-        }
     }
 
     static class TransactionLog {
@@ -101,36 +94,40 @@ public class FileHeap implements Heap {
     // pewnie dałoby się zrobić stałe offsety i tylko bytebufferem zapisywać - do sprawdzenia
 
     public int allocate(String name, byte[] bytes) {
+        int heapPointerTmp = heapPointer; // wskazuje na pierwsze wolne miejsce
         int blockSize = align(bytes.length);
-        putToObjectDirectory(name, blockSize);
-        var memoryBlock = firstFit(blockSize)
-                .orElse(new MemoryBlock(blockSize, true, heapPointer));
 
-        var bucket = Objects.requireNonNull(memoryBuckets.get(blockSize));
-        bucket.addMemoryBlock(memoryBlock);
+        // sprawdzenie luki, jesli jest to wybierz juz zajete miejsce
+        var reuse = new AtomicBoolean(false);
+        objectDirectory.entrySet()
+                .stream()
+                .filter(entry -> !entry.getValue().used && entry.getValue().objectSize == blockSize)
+                .findFirst()
+                .ifPresent(entry -> {
+                    objectDirectory.remove(entry.getKey());
+                    heapPointer = entry.getValue().objectAddress;
+                    reuse.set(true);
+                });
 
-        byteBuffer.position(memoryBlock.getAddress());
+        objectDirectory.put(name, new ObjectData(heapPointer, blockSize, true));
+        this.usedAddresses.add(heapPointer);
+
+        byteBuffer.position(heapPointer);
         byteBuffer.put(bytes);
-        heapPointer += blockSize;
-        memoryBlock.setData(bytes);
+        int allocatedAddress = heapPointer;
+        if (reuse.get()) {
+            heapPointer = heapPointerTmp;
+        } else {
+            heapPointer += blockSize;
+        }
         updateObjectDirectory(); // tylko tu serializacja
-        return memoryBlock.getAddress();
-    }
-
-    public Optional<MemoryBlock> firstFit(int size) {
-        Bucket bucket = memoryBuckets.get(size);
-        if (bucket == null) return Optional.empty();
-        return bucket.getFirstFree();
-    }
-
-    private void putToObjectDirectory(String name, int size) {
-        objectDirectory.put(name, new ObjectData(heapPointer, size));
+        return allocatedAddress;
     }
 
     // todo: poprawić na wersję bez serializacji, tylko stałe offsety
     private void updateObjectDirectory() {
         try {
-            putToObjectDirectory(heapPointerName, Integer.SIZE);
+            objectDirectory.put(heapPointerName, new ObjectData(heapPointer, Integer.SIZE, true));
             byte[] objectDir = mapper.writeValueAsBytes(objectDirectory);
             if (objectDir.length > metadataSize) {
                 throw new RuntimeException("Metadata is too big!");
@@ -177,13 +174,12 @@ public class FileHeap implements Heap {
         if (objectDirectory.containsKey(name)) {
             ObjectData objectData = objectDirectory.get(name);
 //            Transaction.run(this, () -> {
-            Bucket bucket = memoryBuckets.get(objectData.objectSize);
-            bucket.removeByAddress(objectData.objectAddress);
             byte[] bytes = new byte[objectData.objectSize];
             byteBuffer.position(objectData.objectAddress);
             byteBuffer.put(bytes); // put zeroes to buffer (leaves empty space)
             byteBuffer.force();
-            objectDirectory.remove(name);
+            objectData.used = false;
+            objectDirectory.put(name, objectData);
             updateObjectDirectory();
 //            });
         }
@@ -213,11 +209,7 @@ public class FileHeap implements Heap {
                 byteBuffer.get(arr);
                 objectDirectory = mapper.readValue(arr, new TypeReference<HashMap<String, ObjectData>>() {
                 });
-                objectDirectory.forEach((name, objectData) -> memoryBuckets
-                        .get(objectData.objectSize)
-                        .addMemoryBlock(
-                                MemoryBlock.fromAddress(this, objectData.objectAddress, objectData.objectSize)
-                        ));
+                objectDirectory.values().forEach(data -> usedAddresses.add(data.objectAddress));
                 heapPointer = objectDirectory.get("heapPointer").objectAddress;
             }
             isOpened = true;
@@ -233,18 +225,19 @@ public class FileHeap implements Heap {
         this.updateObjectDirectory();
     }
 
-    static class ObjectData {
-        private int objectAddress;
-        private int objectSize;
+    public static class ObjectData {
+        int objectAddress;
+        int objectSize;
+        boolean used = false;
 
         private ObjectData() {
         }// required for Jackson
 
-        private ObjectData(int objectAddress, int objectSize) {
+        private ObjectData(int objectAddress, int objectSize, boolean used) {
             this.objectAddress = objectAddress;
             this.objectSize = objectSize;
+            this.used = used;
         }
-
     }
 
     int align(int n) {
