@@ -8,6 +8,7 @@ import java.io.File;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AllocatorTests {
 
@@ -28,7 +29,6 @@ public class AllocatorTests {
             f.delete();
         }
     }
-
 
     @Test
     public void shouldAllocateLongString() {
@@ -62,5 +62,25 @@ public class AllocatorTests {
         System.out.println("second address: " + secondAddr);
 
         assertEquals(address, expectedAddress);
+    }
+
+    @Test
+    public void shouldAllocateLongString2() {
+        var object = "THIS IS VERY LONG STRING";
+
+        final var heap = new FileHeap(Paths.get(pathToHeap));
+
+        int address = heap.allocate("text", object.getBytes());
+        int secondAddress = heap.allocate("text2", object.getBytes());
+
+        heap.freeObject("text");
+
+        int newAddress = heap.allocate("A", "A".getBytes());
+        int bAddress = heap.allocate("B", "B".getBytes());
+        int cAddress = heap.allocate("C", "C".getBytes());
+
+        assertEquals(address, newAddress);
+        assertTrue(bAddress < secondAddress);
+        assertTrue(cAddress < secondAddress);
     }
 }

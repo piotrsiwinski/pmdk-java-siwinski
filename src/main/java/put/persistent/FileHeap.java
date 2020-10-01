@@ -16,10 +16,11 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -42,7 +43,6 @@ public class FileHeap implements Heap {
     private int heapPointer = heapAddress;
     MappedByteBuffer byteBuffer;
     private Map<String, ObjectData> objectDirectory;
-    private List<Integer> usedAddresses = new LinkedList<>();
     private boolean isOpened = false;
 
 
@@ -101,7 +101,7 @@ public class FileHeap implements Heap {
         var reuse = new AtomicBoolean(false);
         objectDirectory.entrySet()
                 .stream()
-                .filter(entry -> !entry.getValue().used && entry.getValue().objectSize == blockSize)
+                .filter(entry -> !entry.getValue().used && entry.getValue().objectSize >= blockSize)
                 .findFirst()
                 .ifPresent(entry -> {
                     objectDirectory.remove(entry.getKey());
@@ -109,8 +109,26 @@ public class FileHeap implements Heap {
                     reuse.set(true);
                 });
 
+        var data = new TreeSet<>(objectDirectory.values());
+        if (!reuse.get() && data.size() > 1) {
+            Iterator<ObjectData> iterator = data.iterator();
+            while (iterator.hasNext()) {
+                var data1 = iterator.next();
+                ObjectData data2 = null;
+                if (iterator.hasNext()) {
+                    data2 = iterator.next();
+                }
+                if (data1 == null || data2 == null) break;
+                if (data1.objectAddress + data1.objectSize + blockSize < data2.objectAddress) {
+                    System.out.println("FOUND FREE SPACE");
+                    heapPointer = data1.objectAddress + data1.objectSize;
+                    reuse.set(true);
+                }
+            }
+        }
+
+
         objectDirectory.put(name, new ObjectData(heapPointer, blockSize, true));
-        this.usedAddresses.add(heapPointer);
 
         byteBuffer.position(heapPointer);
         byteBuffer.put(bytes);
@@ -209,7 +227,6 @@ public class FileHeap implements Heap {
                 byteBuffer.get(arr);
                 objectDirectory = mapper.readValue(arr, new TypeReference<HashMap<String, ObjectData>>() {
                 });
-                objectDirectory.values().forEach(data -> usedAddresses.add(data.objectAddress));
                 heapPointer = objectDirectory.get("heapPointer").objectAddress;
             }
             isOpened = true;
@@ -225,18 +242,23 @@ public class FileHeap implements Heap {
         this.updateObjectDirectory();
     }
 
-    public static class ObjectData {
+    public static class ObjectData implements Comparable<ObjectData> {
         int objectAddress;
         int objectSize;
         boolean used = false;
 
         private ObjectData() {
-        }// required for Jackson
+        }
 
         private ObjectData(int objectAddress, int objectSize, boolean used) {
             this.objectAddress = objectAddress;
             this.objectSize = objectSize;
             this.used = used;
+        }
+
+        @Override
+        public int compareTo(ObjectData o) {
+            return Integer.compare(objectAddress, o.objectAddress);
         }
     }
 
