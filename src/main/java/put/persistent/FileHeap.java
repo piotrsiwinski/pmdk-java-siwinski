@@ -16,12 +16,10 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -98,8 +96,8 @@ public class FileHeap implements Heap {
 
         // sprawdzenie luki, jesli jest to wybierz juz zajete miejsce
         var reuse = false;
-        var data = new TreeSet<>(objectDirectory.values());
-        if (data.size() > 1) {
+        if (objectDirectory.values().size() > 1) {
+            var data = new TreeSet<>(objectDirectory.values());
             Iterator<ObjectData> iterator = data.iterator();
             var data1 = iterator.next();
             while (iterator.hasNext()) {
