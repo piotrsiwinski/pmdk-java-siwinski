@@ -97,39 +97,26 @@ public class FileHeap implements Heap {
         int blockSize = align(bytes.length);
 
         // sprawdzenie luki, jesli jest to wybierz juz zajete miejsce
-        var reuse = new AtomicBoolean(false);
-        objectDirectory.entrySet()
-                .stream()
-                .filter(entry -> !entry.getValue().used && entry.getValue().objectSize >= blockSize)
-                .findFirst()
-                .ifPresent(entry -> {
-                    objectDirectory.remove(entry.getKey());
-                    heapPointer = entry.getValue().objectAddress;
-                    reuse.set(true);
-                });
-
+        var reuse = false;
         var data = new TreeSet<>(objectDirectory.values());
-        if (!reuse.get() && data.size() > 1) {
+        if (data.size() > 1) {
             Iterator<ObjectData> iterator = data.iterator();
             var data1 = iterator.next();
             while (iterator.hasNext()) {
                 var data2 = iterator.next();
                 if (data1.objectAddress + data1.objectSize + blockSize <= data2.objectAddress) {
-                    System.out.println("FOUND FREE SPACE");
                     heapPointer = data1.objectAddress + data1.objectSize;
-                    reuse.set(true);
+                    reuse = true;
                 }
                 data1 = data2;
             }
         }
 
-
         objectDirectory.put(name, new ObjectData(heapPointer, blockSize, true));
-
         byteBuffer.position(heapPointer);
         byteBuffer.put(bytes);
         int allocatedAddress = heapPointer;
-        if (reuse.get()) {
+        if (reuse) {
             heapPointer = heapPointerTmp;
         } else {
             heapPointer += blockSize;
@@ -193,7 +180,7 @@ public class FileHeap implements Heap {
             byteBuffer.put(bytes); // put zeroes to buffer (leaves empty space)
             byteBuffer.force();
             objectData.used = false;
-            objectDirectory.put(name, objectData);
+            objectDirectory.remove(name);
             updateObjectDirectory();
 //            });
         }
@@ -217,6 +204,7 @@ public class FileHeap implements Heap {
                 byteBuffer.load();
             }
             if (create) {
+                putObject("heapAddress", heapAddress);
                 updateObjectDirectory();
             } else {
                 byte[] arr = new byte[metadataSize];

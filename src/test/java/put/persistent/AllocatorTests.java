@@ -73,23 +73,23 @@ public class AllocatorTests {
 
         final var heap = new FileHeap(Paths.get(pathToHeap));
 
-        int address = heap.allocate("text", longText.getBytes());
-        int longTextAddress = heap.allocate("longText", longText.getBytes());
+        int address = heap.putObject("text", longText);
+        int longTextAddress = heap.putObject("longText", longText);
 
         heap.freeObject("text");
 
-        int aAddress = heap.allocate("A", "A".getBytes());
-        int bAddress = heap.allocate("B", "B".getBytes());
-        int cAddress = heap.allocate("C", "C".getBytes());
+        int aAddress = heap.putObject("A", "A");
+        int bAddress = heap.putObject("B", "B");
+        int cAddress = heap.putObject("C", "C");
 
         assertEquals(address, aAddress);
         assertTrue(bAddress < longTextAddress);
         assertTrue(cAddress < longTextAddress);
 
-        assertEquals(longText, heap.getObject("longText", String.class));
         assertEquals("A", heap.getObject("A", String.class));
         assertEquals("B", heap.getObject("B", String.class));
         assertEquals("C", heap.getObject("C", String.class));
+        assertEquals(longText, heap.getObject("longText", String.class));
 
     }
 }
